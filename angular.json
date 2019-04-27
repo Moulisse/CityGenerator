@@ -132,5 +132,10 @@
       }
     }
   },
-  "defaultProject": "CityGen"
+  "defaultProject": "CityGen",
+  "schematics": {
+    "@schematics/angular:component": {
+      "styleext": "scss"
+    }
+  }
 }
