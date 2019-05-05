@@ -12,6 +12,7 @@ export class CameraService {
     // camera position
     public camX: number;
     public camY: number;
+    public camZ: number;
 
     private oldCamX: number;
     private oldCamY: number;
@@ -34,6 +35,9 @@ export class CameraService {
     }
 
     initMovement(x, y) {
+        if (this.camInertiaRunLoop && !this.camInertiaRunLoop.closed) {
+            this.camInertiaRunLoop.unsubscribe();
+        }
         if (!this.camInertiaLoop || this.camInertiaLoop.closed) {
             this.camInertiaLoop = interval(100).pipe(startWith(0)).subscribe(() => {
                 this.camBuffer[this.camBufferIndex] = {x: this.camX, y: this.camY};
@@ -56,7 +60,6 @@ export class CameraService {
 
     endMovement() {
         if (this.camInertiaLoop && !this.camInertiaLoop.closed) {
-            console.log(this.camBuffer);
             let dx = 0;
             let dy = 0;
             for (const point of this.camBuffer) {
