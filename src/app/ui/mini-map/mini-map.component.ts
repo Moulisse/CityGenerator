@@ -9,7 +9,7 @@ import {CameraService} from '../../services/camera.service';
     styleUrls: ['./mini-map.component.scss']
 })
 export class MiniMapComponent implements OnInit {
-    @ViewChild('miniMap') public canvas: ElementRef;
+    @ViewChild('miniMap', { static: true }) public canvas: ElementRef;
 
     private cx;
     private size = 220;
@@ -44,28 +44,14 @@ export class MiniMapComponent implements OnInit {
             realX += this.Camera.camX;
             realY += this.Camera.camY;
 
-            const simple = this.Noise.getNoise(realX / (this.cityService.mapWidth * 1.7), realY / (this.cityService.mapHeight * 1.7));
+            const simple = this.Noise.getHeight(realX / (this.cityService.mapWidth * 1.7), realY / (this.cityService.mapHeight * 1.7));
 
-            if (simple < 0) {
-                map.data[i] = 86;
-                map.data[i + 1] = 183;
-                map.data[i + 2] = 82;
-                map.data[i + 3] = 255;
-            } else if (simple >= 0 && simple < 0.5) {
-                map.data[i] = 150;
-                map.data[i + 1] = 141;
-                map.data[i + 2] = 130;
-                map.data[i + 3] = 255;
-            } else if (simple >= 0.5) {
-                map.data[i] = 255;
-                map.data[i + 1] = 255;
-                map.data[i + 2] = 255;
-                map.data[i + 3] = 255;
-            }
-            // map.data[i] = (simple + 1) * 128;
-            // map.data[i + 1] = (simple + 1) * 128;
-            // map.data[i + 2] = (simple + 1) * 128;
-            // map.data[i + 3] = 255;
+            const color = this.Noise.getColor(simple);
+
+            map.data[i + 3] = 255;
+            map.data[i] = color[0];
+            map.data[i + 1] = color[1];
+            map.data[i + 2] = color[2];
         }
         this.cx.putImageData(map, 0, 0);
     }

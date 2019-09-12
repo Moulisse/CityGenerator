@@ -1,5 +1,5 @@
 import {Component, ElementRef, AfterViewInit, ViewChild} from '@angular/core';
-import {fromEvent} from 'rxjs';
+import {fromEvent, Subject} from 'rxjs';
 import {CameraService} from './services/camera.service';
 import {NoiseService} from './services/noise.service';
 import {CityService} from './services/city.service';
@@ -10,7 +10,7 @@ import {CityService} from './services/city.service';
     styleUrls  : ['./app.component.scss']
 })
 export class AppComponent implements AfterViewInit {
-    @ViewChild('canvas') public canvas: ElementRef;
+    @ViewChild('canvas', { static: true }) public canvas: ElementRef;
 
     constructor(public cityService: CityService, public Noise: NoiseService, public Camera: CameraService) {
     }
@@ -36,8 +36,8 @@ export class AppComponent implements AfterViewInit {
         this.Camera.setCamera(0, 0);
         this.Camera.camZ = 1;
 
-        this.pixelSize = 8;
-        this.tileSize = 16;
+        this.pixelSize = 2;
+        this.tileSize = 128;
 
         this.tileXcount = Math.ceil(this.cx.canvas.width / this.pixelSize / this.tileSize) + 1;
         this.tileYcount = Math.ceil(this.cx.canvas.height / this.pixelSize / this.tileSize) + 1;
@@ -81,26 +81,23 @@ export class AppComponent implements AfterViewInit {
                             this.cx.drawImage(tile.image, i * pixelSize * tileSize, j * pixelSize * tileSize);
                         }
                     } else {
-                        this.generateTile(i, j).then();
+                        this.generateTile(i, j, pixelSize * tileSize).subscribe((res) => {
+                            this.cx.drawImage(res.image, res.x, res.y);
+                        });
                     }
                 } else {
-                    this.generateTile(i, j).then();
+                    this.generateTile(i, j, pixelSize * tileSize).subscribe((res) => {
+                        this.cx.drawImage(res.image, res.x, res.y);
+                    });
                 }
             }
         }
 
-        // const x = Math.round((this.Camera.camX) / pixelSize / tileSize) * pixelSize * tileSize;
-        // const y = Math.round((this.Camera.camY) / pixelSize / tileSize) * pixelSize * tileSize;
-
-        // for (let i = Math.round((this.Camera.camX - this.cx.canvas.width) / pixelSize) * pixelSize; i <= this.Camera.camX + pixelSize * tileSize; i += tileSize * pixelSize) {
-        //     for (let j = Math.round((this.Camera.camY - this.cx.canvas.height) / pixelSize) * pixelSize; j <= this.Camera.camY + pixelSize * tileSize; j += tileSize * pixelSize) {
-        //         this.generateTile(i, j, pixelSize, tileSize);
-        //     }
-        // }
-
     }
 
-    private async generateTile(x, y) {
+    private generateTile(x, y, size) {
+        const subject = new Subject<any>();
+
         this.tileSet[((x % this.tileXcount) + this.tileXcount) % this.tileXcount][((y % this.tileYcount) + this.tileYcount) % this.tileYcount] = {x, y};
         const tile = this.tileSet[((x % this.tileXcount) + this.tileXcount) % this.tileXcount][((y % this.tileYcount) + this.tileYcount) % this.tileYcount];
 
@@ -109,17 +106,10 @@ export class AppComponent implements AfterViewInit {
 
         for (let i = 0; i < this.tileSize; i++) {
             for (let j = 0; j < this.tileSize; j++) {
-                const simple = this.Noise.getNoise((x * this.pixelSize * this.tileSize + i * this.pixelSize) / (this.cityService.mapWidth * 1.7),
+                const simple = this.Noise.getHeight((x * this.pixelSize * this.tileSize + i * this.pixelSize) / (this.cityService.mapWidth * 1.7),
                     (y * this.pixelSize * this.tileSize + j * this.pixelSize) / (this.cityService.mapWidth * 1.7));
 
-                let color;
-                if (simple < 0) {
-                    color = [86, 183, 82];
-                } else if (simple >= 0 && simple < 0.5) {
-                    color = [150, 141, 130];
-                } else if (simple >= 0.5) {
-                    color = [255, 255, 255];
-                }
+                const color = this.Noise.getColor(simple);
                 for (let k = 0; k < this.pixelSize; k++) {
                     for (let l = 0; l < this.pixelSize; l++) {
                         const n = (i * this.pixelSize + j * this.pixelSize * this.pixelSize * this.tileSize + k + l * this.pixelSize * this.tileSize) * 4;
@@ -147,25 +137,10 @@ export class AppComponent implements AfterViewInit {
         }
         createImageBitmap(imgData).then((imgBitmap) => {
             tile.image = imgBitmap;
-            this.redraw();
+            subject.next({image: tile.image, x: x * size, y: y * size});
         });
 
-        // for (let j = y - tileSize * pixelSize / 2; j < y + tileSize * pixelSize / 2; j += pixelSize) {
-        //     for (let i = x - tileSize * pixelSize / 2; i < x + tileSize * pixelSize / 2; i += pixelSize) {
-        //         const simple = this.Noise.getNoise(
-        //             (i - pixelSize / 2) / (this.cityService.mapWidth * 1.7),
-        //             (j - pixelSize / 2) / (this.cityService.mapHeight * 1.7));
-        //
-        //         if (simple < 0) {
-        //             this.cx.fillStyle = '#56b752';
-        //         } else if (simple >= 0 && simple < 0.5) {
-        //             this.cx.fillStyle = '#968d82';
-        //         } else if (simple >= 0.5) {
-        //             this.cx.fillStyle = '#fff';
-        //         }
-        //         this.cx.fillRect(i - pixelSize / 2, j - pixelSize / 2, pixelSize, pixelSize);
-        //     }
-        // }
+        return subject;
     }
 
     // event listeners

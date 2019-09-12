@@ -13,7 +13,6 @@
             "app",
             "kebab-case"
         ],
-        "max-line-length": false,
         "no-bitwise": false
     }
 }
